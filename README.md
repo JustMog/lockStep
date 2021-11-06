@@ -36,8 +36,10 @@ function love.freeUpdate(dt)
 end
 
 function love.draw(alpha)
-    -- alpha is a number 0 - 1 representing the fraction of a timestep elapsed but not yet simulated 
-    -- it can be used to interpolate between values to smooth out movement visually at low timescales
+    -- alpha is a number 0-1 representing the fraction of a timestep elapsed 
+    -- but not yet simulated. 
+    -- it can be used to interpolate between values 
+    -- to smooth out movement visually at low timescales
 end
 
 -- other callbacks:
@@ -57,9 +59,18 @@ Set to nil for unlimited.
 
 - `lockStep.timeScale [default 1]`
 
-Causes update to be called more or less frequently to speed up or slow down the simulation ( 0.5 = half speed, 2 = double )
-Interpolation between the more infrequent update()s must be used when drawing to achieve smooth results at low timeScales.
-Beware that a timeScale of 0 will stop update() being called at all! It must be reset from another callback in that case.
+Causes update to be called more or less frequently to speed up or slow down the simulation 
+( 0.5 = half speed, 2 = double )
+Interpolation between the more infrequent update()s must be used when drawing 
+to achieve smooth results at low timeScales.
+Beware that a timeScale of 0 will stop update() being called at all! 
+It must be reset from another callback in that case.
+
+- `lockStep.maxUpdateDebt [default 8]`
+
+Maximum number of timesteps the simulation is allowed to fall behind.
+Further steps will be skipped to catch up, causing slowdown but preventing a "death spiral"
+
 
 ```lua
 lockStep.breakdown(x, y, w, h, [alpha])
@@ -72,6 +83,3 @@ and the game may suffer from slowdown.
 lockStep.breakdown()
 ```
 Stop drawing the bar.
-
-
-```
