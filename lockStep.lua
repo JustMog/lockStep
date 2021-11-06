@@ -53,7 +53,7 @@ local function drawBreakdown(opts)
 
     t = t / updatesDone
     for i = 1, updatesDone do
-        lg.rectangle("fill", x, y, (t*w)-2, h)
+        lg.rectangle("fill", x, y, math.max(0, (t*w)-2), h)
         x = x + t*w
     end
 
