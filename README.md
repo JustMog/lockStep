@@ -1,7 +1,7 @@
 lockstep
 ===
 
-[fixed timestep](http://gafferongames.com/game-physics/fix-your-timestep/) based gameloop with timescaling and basic profiling functionality
+[fixed timestep](http://gafferongames.com/game-physics/fix-your-timestep/) based gameloop for love2d with timescaling and basic profiling functionality
 
 Usage
 ---
