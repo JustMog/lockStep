@@ -32,44 +32,47 @@ local function events()
     end
 end
 
+local lg
 local function drawBreakdown(opts)
-    love.graphics.push("all")
-    love.graphics.origin()
+    local pr, pg, pb, pa = lg.getColor()
+
+    local x, y = opts.x, opts.y
     local w, h, a = opts.w, opts.h, opts.alpha or 1
-    love.graphics.translate(opts.x, opts.y)
+    lg.translate(opts.x, opts.y)
 
-    love.graphics.setColor(1,1,1,a)
-    love.graphics.rectangle("fill",0,0,w,h)
+    lg.setColor(1,1,1,a)
+    lg.rectangle("fill",x,y,w,h)
 
-    love.graphics.translate(3,3)
+    x, y = x + 3, y + 3
     w, h = w - 6, h - 6
-    love.graphics.setColor(0,0,0,a)
-    love.graphics.rectangle("fill",0,0,w,h)
+    lg.setColor(0,0,0,a)
+    lg.rectangle("fill",x,y,w,h)
 
     local t = updateTime / timeStep
-    love.graphics.setColor(0,1,1,a)
+    lg.setColor(0,1,1,a)
 
     t = t / updatesDone
     for i = 1, updatesDone do
-        love.graphics.rectangle("fill", 0, 0, (t*w)-2, h)
-        love.graphics.translate(t*w, 0)
+        lg.rectangle("fill", x, y, (t*w)-2, h)
+        x = x + t*w
     end
 
     t = freeUpdateTime / timeStep
-    love.graphics.setColor(1,1,0,a)
-    love.graphics.rectangle("fill",0,0, t*w, h)
-    love.graphics.translate(t*w, 0)
+    lg.setColor(1,1,0,a)
+    lg.rectangle("fill", x, y, t*w, h)
+    x = x + t * w
 
     t =  drawTime / timeStep
-    love.graphics.setColor(1,0,1,a)
-    love.graphics.rectangle("fill",0,0, t*w, h)
+    lg.setColor(1,0,1,a)
+    lg.rectangle("fill", x, y, t*w, h)
 
-    love.graphics.pop()
+    lg.setColor(pr, pg, pb, pa)
 
 end
 
 function love.run()
     if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
+    lg = love.graphics
 
     -- We don't want the first frame's dt to include time taken by love.load.
     if love.timer then love.timer.step() end
@@ -117,10 +120,10 @@ function love.run()
         end
 
 
-        if love.graphics and love.graphics.isActive() then
+        if lg and lg.isActive() then
 
-            love.graphics.origin()
-            love.graphics.clear(love.graphics.getBackgroundColor())
+            lg.origin()
+            lg.clear(lg.getBackgroundColor())
 
             --start measuring time taken to update
             drawTime = love.timer.getTime()
@@ -132,10 +135,10 @@ function love.run()
             drawTime = love.timer.getTime() - drawTime
 
             if breakDownArgs then
-                drawBreakdown(lockStep.drawBreakdown)
+                drawBreakdown(breakDownArgs)
             end
 
-            love.graphics.present()
+            lg.present()
         end
 
         lastFrame = love.timer.getTime()
