@@ -34,11 +34,11 @@ end
 
 local lg
 local function drawBreakdown(opts)
+    lg.origin()
     local pr, pg, pb, pa = lg.getColor()
 
     local x, y = opts.x, opts.y
     local w, h, a = opts.w, opts.h, opts.alpha or 1
-    lg.translate(opts.x, opts.y)
 
     lg.setColor(1,1,1,a)
     lg.rectangle("fill",x,y,w,h)
