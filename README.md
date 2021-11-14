@@ -25,10 +25,12 @@ Maximum number of timesteps the simulation is allowed to fall behind.
 Further steps will be skipped to catch up, causing slowdown but preventing a "death spiral"
 
 - `lockStep.dtSnap [default 0.0002]`
+
 Maximum amount of time in seconds dt can be fudged by
 to snap to nearby exact multiples of a timestep (i.e 1/lockStep.updateRate).
 
 - `lockStep.averageOver [default 4]`
+
 Number of frames to incorporate into rolling average of dt
 
 
