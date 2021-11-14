@@ -1,12 +1,17 @@
 local lockStep = {
     -- updates per second at timescale 1
     updateRate = 60,
-    -- maximum love.draw calls per second
-    drawRate = 60,
-    -- causes update to be called more or less frequently to speed up or slow down the simulation
-    timeScale = 1,
-    -- maximum number of simulation steps allowed to accumulate
-    maxUpdateDebt = 8
+    -- maximum number of simulation steps "behind" allowed to accumulate
+    maxUpdateDebt = 8,
+    -- maximum amount of time to fudge dt by
+    dtSnap = 0.0002,
+    -- number of frames to incorporate into rolling average of dt
+    averageOver = 4
+
+}
+
+local frameTimes = {
+    updateRate = lockStep.updateRate,
 }
 
 local breakDownArgs
@@ -16,21 +21,7 @@ function lockStep.breakdown(x, y, w, h, alpha)
     else breakDownArgs = {x = x, y = y, w = w, h = h, alpha = alpha} end
 end
 
-local dt, accum, timeStep, lastFrame, updateTime, updatesDone, freeUpdateTime, drawTime
-
-local function events()
-    if love.event then
-        love.event.pump()
-        for name, a,b,c,d,e,f in love.event.poll() do
-            if name == "quit" then
-                if not love.quit or not love.quit() then
-                    return a or 0
-                end
-            end
-            love.handlers[name](a,b,c,d,e,f)
-        end
-    end
-end
+local dt, accum, timeStep, updateTime, updatesDone, drawTime
 
 local lg
 local function drawBreakdown(opts)
@@ -49,18 +40,13 @@ local function drawBreakdown(opts)
     lg.rectangle("fill",x,y,w,h)
 
     local t = updateTime / timeStep
-    lg.setColor(0,1,1,a)
+    lg.setColor(1,1,0,a)
 
     t = t / updatesDone
     for i = 1, updatesDone do
         lg.rectangle("fill", x, y, math.max(0, (t*w)-2), h)
         x = x + t*w
     end
-
-    t = freeUpdateTime / timeStep
-    lg.setColor(1,1,0,a)
-    lg.rectangle("fill", x, y, t*w, h)
-    x = x + t * w
 
     t =  drawTime / timeStep
     lg.setColor(1,0,1,a)
@@ -76,72 +62,98 @@ function love.run()
 
     -- We don't want the first frame's dt to include time taken by love.load.
     if love.timer then love.timer.step() end
-    lastFrame = love.timer.getTime()
-
     accum = 0
 
     return function()
 
         timeStep = 1/lockStep.updateRate
-
         dt = love.timer.step()
-        accum = accum + dt * lockStep.timeScale
+
+        --dt snap
+        if lockStep.dtSnap then
+            for i = 1, lockStep.maxUpdateDebt do
+                if math.abs(dt - (timeStep * i)) <= lockStep.dtSnap then
+                    dt = timeStep * i
+                    break
+                end
+            end
+        end
+
+        -- dt averaging
+        if lockStep.averageOver then
+            if frameTimes.updateRate ~= lockStep.updateRate then
+                frameTimes = {}
+                frameTimes.updateRate = lockStep.updateRate
+            end
+            while #frameTimes < lockStep.averageOver do
+                table.insert(frameTimes, timeStep)
+            end
+
+            table.remove(frameTimes,1)
+            table.insert(frameTimes, dt)
+            for i = 1, lockStep.averageOver - 1 do
+                dt = dt + frameTimes[i]
+            end
+
+            dt = dt / lockStep.averageOver
+        end
+
+        accum = accum + dt
         --prevent spiral of death
-        accum = math.min(accum, timeStep * lockStep.maxUpdateDebt)
+        if accum >= timeStep * lockStep.maxUpdateDebt then
+            accum = timeStep
+        end
 
         --start measuring time taken to update
         updateTime = love.timer.getTime()
         updatesDone = math.floor(accum / timeStep)
 
-        -- Process events at least once per drawn frame, even if update isn't called
-        -- Stops love from becoming unresponsive at slow timescales
-        if accum < timeStep then
-            if events() then return true end
+        --events
+        if love.event then
+            love.event.pump()
+            for name, a,b,c,d,e,f in love.event.poll() do
+                if name == "quit" then
+                    if not love.quit or not love.quit() then
+                        return a or 0
+                    end
+                end
+                love.handlers[name](a,b,c,d,e,f)
+            end
         end
+
+        local ticked = false
 
         while accum >= timeStep do
             accum = accum - timeStep
-            if events() then return true end
             if love.update then love.update(timeStep) end
+            ticked = true
         end
 
         --finish measuring time taken to update
         updateTime = love.timer.getTime() - updateTime
 
-        -- non-fixed timestep, useful for e.g. particle systems,
-        --since they have no way of implementing alpha interpolation
-        freeUpdateTime = love.timer.getTime()
-        if love.freeUpdate then love.freeUpdate(dt * lockStep.timeScale) end
-        freeUpdateTime = love.timer.getTime() - freeUpdateTime
 
-        --wait if enforcing max framerate
-        while lockStep.drawRate and love.timer.getTime() - lastFrame < 1 / lockStep.drawRate do
-            love.timer.sleep(.0005)
-        end
-
-
-        if lg and lg.isActive() then
-
-            lg.origin()
-            lg.clear(lg.getBackgroundColor())
+        if lg and lg.isActive() and ticked then
 
             --start measuring time taken to update
             drawTime = love.timer.getTime()
 
-            --pass time left unsimulated for interpolation
-            if love.draw then love.draw(accum / timeStep) end
+            lg.origin()
+            lg.clear(lg.getBackgroundColor())
+
+            if love.draw then love.draw() end
 
             --finish measuring time taken to draw
             drawTime = love.timer.getTime() - drawTime
+
 
             if breakDownArgs then
                 drawBreakdown(breakDownArgs)
             end
 
             lg.present()
-        end
 
-        lastFrame = love.timer.getTime()
+        end
 
         -- why stop when you can yield
         if not lockStep.drawRate then love.timer.sleep(0.001) end
