@@ -28,11 +28,12 @@ Further steps will be skipped to catch up, causing slowdown but preventing a "de
 
 Maximum amount of time in seconds dt can be fudged by
 to snap to nearby exact multiples of a timestep (i.e 1/lockStep.updateRate).
+Set to nil to disable snapping.
 
 - `lockStep.averageOver [default 4]`
 
 Number of frames to incorporate into rolling average of dt
-
+Set to nil to disable averaging.
 
 ```lua
 lockStep.breakdown(x, y, w, h, [alpha])
