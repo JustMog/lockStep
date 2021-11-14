@@ -56,6 +56,15 @@ local function drawBreakdown(opts)
 
 end
 
+local time_60hz = 1/60
+local snapFrequencies = {
+    time_60hz,        --60fps
+    time_60hz*2,      --30fps
+    time_60hz*3,      --20fps
+    time_60hz*4,      --15fps
+    (time_60hz+1)/2,  --120fps --120hz, 240hz, or higher need to round up, so that adding 120hz twice guaranteed is at least the same as adding time_60hz once
+}
+
 function love.run()
     if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
     lg = love.graphics
@@ -69,11 +78,13 @@ function love.run()
         timeStep = 1/lockStep.updateRate
         dt = love.timer.step()
 
+        if dt < 0  then dt = 0 end
+
         --dt snap
         if lockStep.dtSnap then
-            for i = 1, lockStep.maxUpdateDebt do
-                if math.abs(dt - (timeStep * i)) <= lockStep.dtSnap then
-                    dt = timeStep * i
+            for _, snap in ipairs(snapFrequencies) do
+                if math.abs(dt - snap) <= lockStep.dtSnap then
+                    dt = snap
                     break
                 end
             end
@@ -89,10 +100,12 @@ function love.run()
                 table.insert(frameTimes, timeStep)
             end
 
-            table.remove(frameTimes,1)
+            table.remove(frameTimes, 1)
             table.insert(frameTimes, dt)
-            for i = 1, lockStep.averageOver - 1 do
-                dt = dt + frameTimes[i]
+
+            dt = 0
+            for _, v in ipairs(frameTimes) do
+                dt = dt + v
             end
 
             dt = dt / lockStep.averageOver
