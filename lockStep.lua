@@ -9,36 +9,33 @@ local lockStep = {
     averageOver = 4
 
 }
+local timeStep
 
+--buffer of dts from previous frames for averaging
 local frameTimes = {
+    --keep our own idea of the update rate to detect if it was changed
     updateRate = lockStep.updateRate,
 }
 
-local breakDownArgs
---pass nil to stop drawing
-function lockStep.breakdown(x, y, w, h, cols)
-    if not x then breakDownArgs = nil
-    else
-        cols = cols or {}
-        cols.alpha = cols.alpha or 1
-        cols.update = cols.update or {0,1,1}
-        cols.draw = cols.draw or {1,0,1}
-        breakDownArgs = { x = x, y = y, w = w, h = h, cols = cols }
-    end
-end
-
-local dt, accum, timeStep, updateTime, updatesDone, drawTime
+--timing values buffered by one frame to sync draw and update
+local timingBack = {
+    updateTime = 0,
+    updates = 0,
+    drawTime = 0,
+}
 
 local lg
-local function drawBreakdown(opts)
+function lockStep.drawBreakdown(x, y, w, h, cols)
+    cols = cols or {}
+    local a = cols.alpha or 1
+    cols.update = cols.update or {0,1,1}
+    cols.draw = cols.draw or {1,0,1}
+    cols.update[4] = a
+    cols.draw[4] = a
+
+    lg.push("all")
+
     lg.origin()
-    local pr, pg, pb, pa = lg.getColor()
-
-    local x, y = opts.x, opts.y
-    local w, h, a = opts.w, opts.h, opts.cols.alpha or 1
-
-    opts.cols.update[4] = a
-    opts.cols.draw[4] = a
 
     lg.setColor(1,1,1,a)
     lg.rectangle("fill",x,y,w,h)
@@ -50,20 +47,20 @@ local function drawBreakdown(opts)
 
     lg.rectangle("fill",x,y,w,h)
 
-    local t = updateTime / timeStep
-    lg.setColor(unpack(opts.cols.update))
+    local t = timingBack.updateTime / timeStep
+    lg.setColor(unpack(cols.update))
 
-    t = t / updatesDone
-    for i = 1, updatesDone do
+    t = t / timingBack.updates
+    for i = 1, timingBack.updates do
         lg.rectangle("fill", x, y, math.max(0, (t*w)-2), h)
         x = x + t*w
     end
 
-    t =  drawTime / timeStep
-    lg.setColor(unpack(opts.cols.draw))
+    t =  timingBack.drawTime / timeStep
+    lg.setColor(unpack(cols.draw))
     lg.rectangle("fill", x, y, t*w, h)
 
-    lg.setColor(pr, pg, pb, pa)
+    lg.pop()
 
 end
 
@@ -82,12 +79,14 @@ function love.run()
 
     -- We don't want the first frame's dt to include time taken by love.load.
     if love.timer then love.timer.step() end
-    accum = 0
+    local accum = 0
+
+    local timing = {}
 
     return function()
 
         timeStep = 1/lockStep.updateRate
-        dt = love.timer.step()
+        local dt = love.timer.step()
 
         if dt < 0  then dt = 0 end
 
@@ -129,8 +128,8 @@ function love.run()
         end
 
         --start measuring time taken to update
-        updateTime = love.timer.getTime()
-        updatesDone = math.floor(accum / timeStep)
+        timing.updateTime = love.timer.getTime()
+        timing.updates = 0
 
         --events
         if love.event then
@@ -145,37 +144,32 @@ function love.run()
             end
         end
 
-        local ticked = false
-
         while accum >= timeStep do
             accum = accum - timeStep
             if love.update then love.update(timeStep) end
-            ticked = true
+            timing.updates = timing.updates + 1
         end
 
         --finish measuring time taken to update
-        updateTime = love.timer.getTime() - updateTime
+        timing.updateTime = love.timer.getTime() - timing.updateTime
 
 
-        if lg and lg.isActive() and ticked then
+        if lg and lg.isActive() and timing.updates > 0 then
 
             --start measuring time taken to update
-            drawTime = love.timer.getTime()
+            timing.drawStartTime = love.timer.getTime()
 
             lg.origin()
             lg.clear(lg.getBackgroundColor())
 
             if love.draw then love.draw() end
 
-            --finish measuring time taken to draw
-            drawTime = love.timer.getTime() - drawTime
-
-
-            if breakDownArgs then
-                drawBreakdown(breakDownArgs)
-            end
-
             lg.present()
+
+            --finish measuring time taken to draw
+            timing.drawTime = love.timer.getTime() - timing.drawStartTime
+
+            timingBack, timing = timing, timingBack
 
         end
 
