@@ -16,9 +16,15 @@ local frameTimes = {
 
 local breakDownArgs
 --pass nil to stop drawing
-function lockStep.breakdown(x, y, w, h, alpha)
+function lockStep.breakdown(x, y, w, h, cols)
     if not x then breakDownArgs = nil
-    else breakDownArgs = {x = x, y = y, w = w, h = h, alpha = alpha} end
+    else
+        cols = cols or {}
+        cols.alpha = cols.alpha or 1
+        cols.update = cols.update or {0,1,1}
+        cols.draw = cols.draw or {1,0,1}
+        breakDownArgs = { x = x, y = y, w = w, h = h, cols = cols }
+    end
 end
 
 local dt, accum, timeStep, updateTime, updatesDone, drawTime
@@ -29,18 +35,23 @@ local function drawBreakdown(opts)
     local pr, pg, pb, pa = lg.getColor()
 
     local x, y = opts.x, opts.y
-    local w, h, a = opts.w, opts.h, opts.alpha or 1
+    local w, h, a = opts.w, opts.h, opts.cols.alpha or 1
+
+    opts.cols.update[4] = a
+    opts.cols.draw[4] = a
 
     lg.setColor(1,1,1,a)
     lg.rectangle("fill",x,y,w,h)
 
     x, y = x + 3, y + 3
     w, h = w - 6, h - 6
+
     lg.setColor(0,0,0,a)
+
     lg.rectangle("fill",x,y,w,h)
 
     local t = updateTime / timeStep
-    lg.setColor(1,1,0,a)
+    lg.setColor(unpack(opts.cols.update))
 
     t = t / updatesDone
     for i = 1, updatesDone do
@@ -49,7 +60,7 @@ local function drawBreakdown(opts)
     end
 
     t =  drawTime / timeStep
-    lg.setColor(1,0,1,a)
+    lg.setColor(unpack(opts.cols.draw))
     lg.rectangle("fill", x, y, t*w, h)
 
     lg.setColor(pr, pg, pb, pa)

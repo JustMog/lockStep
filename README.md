@@ -36,11 +36,16 @@ Number of frames to incorporate into rolling average of dt
 Set to nil to disable averaging.
 
 ```lua
-lockStep.breakdown(x, y, w, h, [alpha])
+lockStep.breakdown(x, y, w, h, [colors])
 ```
-Begin drawing a bar showing how long is spent in update (yellow) and draw (magenta)
-as a proportion of the length of one timestep. if it exceeds 100%, the simulation will start to fall behind
-and the game may suffer from slowdown.
+Begin drawing a bar showing how long is spent in update and draw as a proportion of the length of one timestep. 
+if it exceeds 100%, the simulation will start to fall behind and the game may suffer from slowdown.
+
+colors is an optional parameter. if included it can contain any of the following keys:
+
+- alpha: number 0-1. sets the transparency of the breakdown. (default 1)
+- update: table {r, g, b}. color to draw the update portion of the bar (default {0,1,1} cyan)
+- draw: table {r, g, b}. color to draw the draw portion of the bar (default {1,0,1} magenta)
 
 ```lua
 lockStep.breakdown()
