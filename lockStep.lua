@@ -1,5 +1,5 @@
 local lockStep = {
-    -- updates per second at timescale 1
+    -- updates per second
     updateRate = 60,
     -- maximum number of simulation steps "behind" allowed to accumulate
     maxUpdateDebt = 8,
@@ -25,11 +25,16 @@ local timingBack = {
 }
 
 local lg
+local defaultCols = {
+    update = {0,1,1},
+    draw = {1,0,1},
+    alpha = 1,
+}
 function lockStep.drawBreakdown(x, y, w, h, cols)
-    cols = cols or {}
+    cols = cols or defaultCols
     local a = cols.alpha or 1
-    cols.update = cols.update or {0,1,1}
-    cols.draw = cols.draw or {1,0,1}
+    cols.update = cols.update or defaultCols.update
+    cols.draw = cols.draw or defaultCols.draw
     cols.update[4] = a
     cols.draw[4] = a
 
